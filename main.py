@@ -1,7 +1,7 @@
 import customtkinter as ctk
 from tkinter import filedialog, messagebox
 from moviepy.video.io.VideoFileClip import VideoFileClip
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 import os
 
 def determine_slide_count(duration):
@@ -39,13 +39,34 @@ def generate_slides_in_one_file(video_path, output_folder):
                 frames.append(image)
 
             width, height = frames[0].size
-            combined_height = height * num_slides
-            combined_image = Image.new("RGB", (width, combined_height))
+            combined_width = width * num_slides
+            combined_image = Image.new("RGB", (combined_width, height))
 
             for i, frame in enumerate(frames):
-                combined_image.paste(frame, (0, i * height))
+                combined_image.paste(frame, (i * width, 0))
+
+            draw = ImageDraw.Draw(combined_image)
+            font_path = "arial.ttf"
+            try:
+                font = ImageFont.truetype(font_path, 48, encoding="unic")
+                bold_font = ImageFont.truetype(font_path, 48, encoding="unic")
+            except IOError:
+                font = ImageFont.load_default()
+                bold_font = font
 
             video_name = os.path.splitext(os.path.basename(video_path))[0]
+            duration_text = f"Длительность: {int(duration // 60)} мин {int(duration % 60)} сек"
+
+            text = f"Видео: {video_name}\n{duration_text}"
+            text_bbox = draw.textbbox((0, 0), text, font=bold_font)
+            text_width, text_height = text_bbox[2] - text_bbox[0], text_bbox[3] - text_bbox[1]
+
+            background_height = text_height + 10
+            background_width = text_width + 20
+            draw.rectangle([(0, 0), (background_width, background_height)], fill="black")
+
+            draw.multiline_text((10, 5), text, fill="white", font=bold_font, align="left")
+
             output_path = os.path.join(output_folder, f"{video_name}.jpg")
             combined_image.save(output_path, format="JPEG", quality=95)
     except Exception as e:
